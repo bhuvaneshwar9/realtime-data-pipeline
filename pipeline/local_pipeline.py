@@ -5,10 +5,11 @@ Simulates Bronze → Silver → Gold with anomaly detection.
 Run: python pipeline/local_pipeline.py
 """
 
-import os, time, uuid, random
+import os, sys, time, uuid, random
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 BASE  = os.path.join(os.path.dirname(__file__), "..", "data")
 os.makedirs(os.path.join(BASE, "bronze"), exist_ok=True)
@@ -41,7 +42,7 @@ def generate_events(n: int = 500) -> pd.DataFrame:
 
 # ── Bronze: raw ingest ────────────────────────────────────────────────────────
 def bronze(df: pd.DataFrame) -> pd.DataFrame:
-    df["_ingested_at"] = datetime.utcnow().isoformat()
+    df["_ingested_at"] = datetime.now(timezone.utc).isoformat()
     path = os.path.join(BASE, "bronze", "events.parquet")
     df.to_parquet(path, index=False)
     print(f"  Bronze: {len(df)} events  →  {path}")
@@ -58,7 +59,7 @@ def silver(df: pd.DataFrame) -> pd.DataFrame:
 
     mean, std = df["amount"].mean(), df["amount"].std()
     df["is_anomaly"] = (df["amount"] - mean).abs() > 3 * std
-    df["_processed_at"] = datetime.utcnow().isoformat()
+    df["_processed_at"] = datetime.now(timezone.utc).isoformat()
 
     path = os.path.join(BASE, "silver", "events.parquet")
     df.to_parquet(path, index=False)
