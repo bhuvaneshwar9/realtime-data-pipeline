@@ -375,7 +375,7 @@ def dashboard():
   </div>
 
   <div class="btns">
-    <a class="btn solid" href="/run">↻ Re-run Pipeline</a>
+    <a class="btn solid" href="/" onclick="location.reload();return false;">↻ Re-run Pipeline</a>
     <a class="btn ghost" href="/docs">📖 API Docs</a>
     <a class="btn green" href="https://www.coingecko.com/en/coins/bitcoin" target="_blank">🌐 Live Data Source</a>
   </div>
