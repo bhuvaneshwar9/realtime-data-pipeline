@@ -212,33 +212,33 @@ def dashboard():
     tier_rows = ""
     for row in g["by_tier"]:
         chg   = row["avg_change_24h"]
-        color = "#34d399" if chg >= 0 else "#ef4444"
+        color = "#00ff88" if chg >= 0 else "#ff4d6d"
         sign  = "+" if chg >= 0 else ""
         tier_rows += f"""<tr>
-          <td>{row['category']}</td>
+          <td style="color:#c8d8f0">{row['category']}</td>
           <td>${row['total_market_cap_B']:,.1f}B</td>
           <td>${row['total_volume_B']:,.2f}B</td>
           <td>{row['coin_count']}</td>
-          <td style="color:{color};font-weight:600">{sign}{chg}%</td>
-          <td>{int(row['anomaly_count'])}</td>
+          <td style="color:{color};font-weight:700">{sign}{chg}%</td>
+          <td style="color:#ffd60a">{int(row['anomaly_count'])}</td>
         </tr>"""
 
     gainer_rows = ""
     for c in g["top_gainers"]:
         p_str = f"${c['price_usd']:,.4f}" if c['price_usd'] < 1 else f"${c['price_usd']:,.2f}"
         gainer_rows += f"""<tr>
-          <td><b>{c['symbol']}</b></td><td>{c['name']}</td>
+          <td style="color:#00d4ff;font-weight:700">{c['symbol']}</td><td style="color:#8ab0d0">{c['name']}</td>
           <td>{p_str}</td>
-          <td style="color:#34d399;font-weight:700">+{c['price_change_24h']:.2f}%</td>
+          <td style="color:#00ff88;font-weight:700">+{c['price_change_24h']:.2f}%</td>
         </tr>"""
 
     loser_rows = ""
     for c in g["top_losers"]:
         p_str = f"${c['price_usd']:,.4f}" if c['price_usd'] < 1 else f"${c['price_usd']:,.2f}"
         loser_rows += f"""<tr>
-          <td><b>{c['symbol']}</b></td><td>{c['name']}</td>
+          <td style="color:#00d4ff;font-weight:700">{c['symbol']}</td><td style="color:#8ab0d0">{c['name']}</td>
           <td>{p_str}</td>
-          <td style="color:#ef4444;font-weight:700">{c['price_change_24h']:.2f}%</td>
+          <td style="color:#ff4d6d;font-weight:700">{c['price_change_24h']:.2f}%</td>
         </tr>"""
 
     sentiment_color = "#34d399" if "Bullish" in s["market_sentiment"] else "#ef4444"
@@ -250,139 +250,142 @@ def dashboard():
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Realtime Data Pipeline</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;700&display=swap');
     *{{box-sizing:border-box;margin:0;padding:0}}
-    body{{background:#0d0a06;color:#e2e8f0;font-family:'Segoe UI',sans-serif;padding:2rem;line-height:1.5}}
-    h1{{color:#f97316;font-size:1.6rem;margin-bottom:.25rem}}
-    h2{{color:#f97316;font-size:.95rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin:1.8rem 0 .7rem}}
-    .sub{{color:#94a3b8;font-size:.88rem;margin-bottom:1rem}}
-    .src{{display:flex;align-items:center;gap:.6rem;margin-bottom:1.2rem;
-          background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25);
-          border-radius:8px;padding:.5rem 1rem;font-size:.82rem;flex-wrap:wrap}}
-    .dot{{width:9px;height:9px;background:#34d399;border-radius:50%;animation:pulse 1.5s infinite;flex-shrink:0}}
-    @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:.25}}}}
-    .src a{{color:#34d399;text-decoration:none;font-weight:600}}
-    .rbar{{background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.14);
-           border-radius:8px;padding:.55rem 1rem;font-size:.8rem;color:#94a3b8;
-           display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem}}
-    #cd{{color:#f97316;font-weight:700}}
+    :root{{--bg:#060d1a;--bg2:#0b1628;--bg3:#0f1f35;--green:#00ff88;--cyan:#00d4ff;--red:#ff4d6d;--yellow:#ffd60a;--text:#c8d8f0;--muted:#4a6080;--border:#1a3050}}
+    body{{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}}
+    /* scanline overlay */
+    body::before{{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,.015) 2px,rgba(0,212,255,.015) 4px);pointer-events:none;z-index:0}}
+    .wrap{{position:relative;z-index:1;padding:1.5rem 2rem;max-width:1400px;margin:0 auto}}
+    /* top bar */
+    .topbar{{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:1rem;margin-bottom:1.5rem;flex-wrap:wrap;gap:.8rem}}
+    .logo{{font-family:'JetBrains Mono',monospace;font-size:1.1rem;color:var(--green);text-shadow:0 0 12px rgba(0,255,136,.5)}}
+    .logo span{{color:var(--cyan)}}
+    .live-pill{{display:flex;align-items:center;gap:.5rem;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.3);border-radius:20px;padding:.3rem .9rem;font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--green)}}
+    .pulse{{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 6px var(--green);animation:blink 1.2s infinite}}
+    @keyframes blink{{0%,100%{{opacity:1;box-shadow:0 0 6px var(--green)}}50%{{opacity:.3;box-shadow:none}}}}
+    .sentiment{{font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700}}
     /* pipeline flow */
-    .pipeline{{display:flex;align-items:center;gap:.6rem;margin-bottom:2rem;flex-wrap:wrap}}
-    .layer{{border-radius:10px;padding:1rem 1.4rem;min-width:160px}}
-    .b{{background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3)}}
-    .sv{{background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.25)}}
-    .g{{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.25)}}
-    .lname{{font-size:.68rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:.4rem}}
-    .b .lname{{color:#f97316}}.sv .lname{{color:#38bdf8}}.g .lname{{color:#34d399}}
-    .lnum{{font-size:1.7rem;font-weight:800}}
-    .b .lnum{{color:#f97316}}.sv .lnum{{color:#38bdf8}}.g .lnum{{color:#34d399}}
-    .ldesc{{font-size:.74rem;color:#94a3b8;margin-top:.2rem}}
-    .arrow{{font-size:1.4rem;color:#f97316}}
-    /* stats */
-    .stats{{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1.8rem}}
-    .stat{{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.18);
-           border-radius:10px;padding:.9rem 1.3rem;min-width:120px}}
-    .stat-n{{font-size:1.8rem;font-weight:800;color:#f97316}}
-    .stat-l{{color:#94a3b8;font-size:.75rem;margin-top:.15rem}}
+    .flow{{display:flex;align-items:stretch;gap:0;margin-bottom:2rem;border:1px solid var(--border);border-radius:12px;overflow:hidden}}
+    .layer{{flex:1;padding:1.2rem 1.4rem;position:relative}}
+    .layer+.layer{{border-left:1px solid var(--border)}}
+    .l-bronze{{background:linear-gradient(135deg,rgba(255,160,0,.08),rgba(255,160,0,.03))}}
+    .l-silver{{background:linear-gradient(135deg,rgba(0,212,255,.08),rgba(0,212,255,.03))}}
+    .l-gold{{background:linear-gradient(135deg,rgba(0,255,136,.08),rgba(0,255,136,.03))}}
+    .l-tag{{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:.6rem}}
+    .l-bronze .l-tag{{color:#ffa000}}.l-silver .l-tag{{color:var(--cyan)}}.l-gold .l-tag{{color:var(--green)}}
+    .l-val{{font-size:2rem;font-weight:700;line-height:1;margin-bottom:.4rem}}
+    .l-bronze .l-val{{color:#ffa000}}.l-silver .l-val{{color:var(--cyan)}}.l-gold .l-val{{color:var(--green)}}
+    .l-desc{{font-size:.73rem;color:var(--muted);line-height:1.5}}
+    .l-arrow{{display:flex;align-items:center;justify-content:center;padding:0 .4rem;color:var(--border);font-size:1.2rem;background:var(--bg2);border-left:1px solid var(--border);border-right:1px solid var(--border)}}
+    /* metric grid */
+    .metrics{{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.8rem;margin-bottom:2rem}}
+    .metric{{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;transition:.2s}}
+    .metric:hover{{border-color:var(--cyan);box-shadow:0 0 12px rgba(0,212,255,.1)}}
+    .m-val{{font-size:1.6rem;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1}}
+    .m-label{{font-size:.7rem;color:var(--muted);margin-top:.4rem;text-transform:uppercase;letter-spacing:.5px}}
+    /* section header */
+    .sec{{display:flex;align-items:center;gap:.7rem;margin:1.6rem 0 .8rem}}
+    .sec-line{{flex:1;height:1px;background:var(--border)}}
+    .sec-title{{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);white-space:nowrap}}
     /* tables */
-    table{{width:100%;border-collapse:collapse;background:rgba(20,12,4,.9);
-           border-radius:10px;overflow:hidden;margin-bottom:1.5rem}}
-    th{{background:rgba(249,115,22,.12);color:#f97316;padding:.65rem 1rem;
-        text-align:left;font-size:.76rem;letter-spacing:1px;text-transform:uppercase}}
-    td{{padding:.65rem 1rem;border-bottom:1px solid rgba(249,115,22,.07);font-size:.84rem}}
+    table{{width:100%;border-collapse:collapse;background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1rem}}
+    thead tr{{background:var(--bg3)}}
+    th{{padding:.65rem 1rem;text-align:left;font-size:.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--cyan);font-family:'JetBrains Mono',monospace;font-weight:400;border-bottom:1px solid var(--border)}}
+    td{{padding:.6rem 1rem;border-bottom:1px solid rgba(26,48,80,.6);font-size:.82rem;font-family:'JetBrains Mono',monospace}}
     tr:last-child td{{border-bottom:none}}
-    tr:hover td{{background:rgba(249,115,22,.04)}}
-    .two{{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}}
-    @media(max-width:700px){{.two{{grid-template-columns:1fr}}}}
-    .btns{{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1.2rem}}
-    .btn{{display:inline-block;padding:.5rem 1.2rem;border-radius:8px;text-decoration:none;
-          font-weight:700;font-size:.85rem;transition:.2s}}
-    .solid{{background:#f97316;color:#000}}.solid:hover{{background:#ea580c}}
-    .ghost{{background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.35)}}
-    .ghost:hover{{background:rgba(249,115,22,.22)}}
-    .green{{background:rgba(52,211,153,.12);color:#34d399;border:1px solid rgba(52,211,153,.3)}}
-    .green:hover{{background:rgba(52,211,153,.22)}}
+    tr:hover td{{background:rgba(0,212,255,.03)}}
+    .two{{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}}
+    @media(max-width:700px){{.two{{grid-template-columns:1fr}}.flow{{flex-direction:column}}.l-arrow{{display:none}}}}
+    /* buttons */
+    .btns{{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1.8rem;padding-top:1.2rem;border-top:1px solid var(--border)}}
+    .btn{{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1.2rem;border-radius:6px;text-decoration:none;font-weight:600;font-size:.8rem;font-family:'JetBrains Mono',monospace;transition:.2s;cursor:pointer;border:none}}
+    .btn-primary{{background:var(--green);color:#000}}.btn-primary:hover{{background:#00e07a;box-shadow:0 0 16px rgba(0,255,136,.4)}}
+    .btn-ghost{{background:transparent;color:var(--cyan);border:1px solid rgba(0,212,255,.35)}}.btn-ghost:hover{{background:rgba(0,212,255,.08)}}
+    .btn-dim{{background:transparent;color:var(--muted);border:1px solid var(--border)}}.btn-dim:hover{{color:var(--text);border-color:var(--muted)}}
+    .cd-bar{{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.5rem 1rem;font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--muted);display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem}}
+    #cd{{color:var(--cyan)}}
   </style>
 </head>
 <body>
-  <h1>⚡ Realtime Data Pipeline</h1>
-  <p class="sub">Bronze → Silver → Gold medallion architecture &nbsp;·&nbsp;
-     {data['run_at'][:19]} UTC &nbsp;·&nbsp; {data['elapsed_ms']} ms</p>
-
-  <div class="src">
-    <span class="dot"></span>
-    <span>Live data from</span>
-    <a href="https://www.coingecko.com" target="_blank">CoinGecko</a>
-    <span style="color:#475569">·</span>
-    <span style="color:#94a3b8">{source}</span>
-  </div>
-
-  <div class="rbar">
-    <span>Auto-refreshing in <span id="cd">60</span>s</span>
-    <span style="color:{sentiment_color};font-weight:700">{s['market_sentiment']}</span>
-  </div>
-
-  <!-- Medallion Pipeline -->
-  <div class="pipeline">
-    <div class="layer b">
-      <div class="lname">Bronze</div>
-      <div class="lnum">{b['rows']}</div>
-      <div class="ldesc">Raw coin records ingested<br/>{b['size_kb']} KB · {b['bullish']} bullish · {b['bearish']} bearish</div>
-    </div>
-    <div class="arrow">→</div>
-    <div class="layer sv">
-      <div class="lname">Silver</div>
-      <div class="lnum">{s['rows_out']}</div>
-      <div class="ldesc">{s['dropped']} dropped · {s['price_anomalies']} price anomalies<br/>{s['volume_spikes']} volume spikes · {s['anomaly_rate_pct']}% flagged</div>
-    </div>
-    <div class="arrow">→</div>
-    <div class="layer g">
-      <div class="lname">Gold</div>
-      <div class="lnum">${g['total_market_cap_B']:,.0f}B</div>
-      <div class="ldesc">Total market cap<br/>${g['total_volume_B']:,.1f}B volume · {g['total_coins']} coins</div>
+<div class="wrap">
+  <div class="topbar">
+    <div class="logo">PIPELINE<span>.io</span> <span style="color:var(--muted);font-size:.8rem">/ crypto market feed</span></div>
+    <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted)">{data['run_at'][:19]}Z · {data['elapsed_ms']}ms</span>
+      <div class="live-pill"><span class="pulse"></span>LIVE</div>
+      <span class="sentiment" style="color:{sentiment_color}">{s['market_sentiment']}</span>
     </div>
   </div>
 
-  <!-- Market stats -->
-  <div class="stats">
-    <div class="stat"><div class="stat-n">{g['bullish_coins']}</div><div class="stat-l">Bullish Coins</div></div>
-    <div class="stat"><div class="stat-n" style="color:#ef4444">{g['bearish_coins']}</div><div class="stat-l">Bearish Coins</div></div>
-    <div class="stat"><div class="stat-n">{s['price_anomalies']}</div><div class="stat-l">Price Anomalies</div></div>
-    <div class="stat"><div class="stat-n">{s['volume_spikes']}</div><div class="stat-l">Volume Spikes</div></div>
-    <div class="stat"><div class="stat-n" style="color:{sentiment_color}">{s['avg_change_24h']:+.2f}%</div><div class="stat-l">Avg 24h Change</div></div>
+  <div class="cd-bar">
+    <span>FEED SOURCE: <span style="color:var(--text)">{source}</span></span>
+    <span>REFRESH IN <span id="cd">60</span>s</span>
   </div>
 
-  <h2>By Market Cap Tier</h2>
+  <!-- Pipeline layers -->
+  <div class="flow">
+    <div class="layer l-bronze">
+      <div class="l-tag">▶ Bronze  /  ingest</div>
+      <div class="l-val">{b['rows']}</div>
+      <div class="l-desc">raw records · {b['size_kb']} KB<br/>{b['bullish']} bullish · {b['bearish']} bearish</div>
+    </div>
+    <div class="l-arrow">→</div>
+    <div class="layer l-silver">
+      <div class="l-tag">▶ Silver  /  clean + detect</div>
+      <div class="l-val">{s['rows_out']}</div>
+      <div class="l-desc">{s['dropped']} dropped · {s['price_anomalies']} anomalies<br/>{s['volume_spikes']} vol spikes · {s['anomaly_rate_pct']}% flagged</div>
+    </div>
+    <div class="l-arrow">→</div>
+    <div class="layer l-gold">
+      <div class="l-tag">▶ Gold  /  aggregate</div>
+      <div class="l-val">${g['total_market_cap_B']:,.0f}B</div>
+      <div class="l-desc">total market cap<br/>${g['total_volume_B']:,.1f}B volume · {g['total_coins']} coins</div>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics">
+    <div class="metric"><div class="m-val" style="color:var(--green)">{g['bullish_coins']}</div><div class="m-label">Bullish</div></div>
+    <div class="metric"><div class="m-val" style="color:var(--red)">{g['bearish_coins']}</div><div class="m-label">Bearish</div></div>
+    <div class="metric"><div class="m-val" style="color:var(--yellow)">{s['price_anomalies']}</div><div class="m-label">Price Anomalies</div></div>
+    <div class="metric"><div class="m-val" style="color:var(--cyan)">{s['volume_spikes']}</div><div class="m-label">Vol Spikes</div></div>
+    <div class="metric"><div class="m-val" style="color:{sentiment_color}">{s['avg_change_24h']:+.2f}%</div><div class="m-label">Avg 24h Δ</div></div>
+    <div class="metric"><div class="m-val" style="color:var(--text)">${g['total_volume_B']:,.1f}B</div><div class="m-label">24h Volume</div></div>
+  </div>
+
+  <div class="sec"><span class="sec-title">market cap tier breakdown</span><span class="sec-line"></span></div>
   <table>
-    <thead><tr><th>Tier</th><th>Market Cap</th><th>24h Volume</th><th>Coins</th><th>Avg 24h Change</th><th>Anomalies</th></tr></thead>
+    <thead><tr><th>Tier</th><th>Market Cap</th><th>24h Volume</th><th>Coins</th><th>Avg 24h Δ</th><th>Anomalies</th></tr></thead>
     <tbody>{tier_rows}</tbody>
   </table>
 
   <div class="two">
     <div>
-      <h2>Top 5 Gainers (24h)</h2>
+      <div class="sec"><span class="sec-title">top 5 gainers · 24h</span><span class="sec-line"></span></div>
       <table>
-        <thead><tr><th>Symbol</th><th>Name</th><th>Price</th><th>24h Change</th></tr></thead>
+        <thead><tr><th>Sym</th><th>Name</th><th>Price</th><th>Δ 24h</th></tr></thead>
         <tbody>{gainer_rows}</tbody>
       </table>
     </div>
     <div>
-      <h2>Top 5 Losers (24h)</h2>
+      <div class="sec"><span class="sec-title">top 5 losers · 24h</span><span class="sec-line"></span></div>
       <table>
-        <thead><tr><th>Symbol</th><th>Name</th><th>Price</th><th>24h Change</th></tr></thead>
+        <thead><tr><th>Sym</th><th>Name</th><th>Price</th><th>Δ 24h</th></tr></thead>
         <tbody>{loser_rows}</tbody>
       </table>
     </div>
   </div>
 
   <div class="btns">
-    <a class="btn solid" href="/" onclick="location.reload();return false;">↻ Re-run Pipeline</a>
-    <a class="btn ghost" href="/docs">📖 API Docs</a>
-    <a class="btn green" href="https://www.coingecko.com/en/coins/bitcoin" target="_blank">🌐 Live Data Source</a>
+    <button class="btn btn-primary" onclick="location.reload()">⟳ Re-run Pipeline</button>
+    <a class="btn btn-ghost" href="/docs">API Docs</a>
+    <a class="btn btn-dim" href="https://www.coingecko.com" target="_blank">↗ CoinGecko</a>
   </div>
-
-  <script>
-    let t=60; const el=document.getElementById("cd");
-    setInterval(()=>{{t--;el.textContent=t;if(t<=0)location.reload();}},1000);
-  </script>
+</div>
+<script>
+  let t=60;const el=document.getElementById("cd");
+  setInterval(()=>{{t--;el.textContent=t;if(t<=0)location.reload();}},1000);
+</script>
 </body>
 </html>"""
