@@ -219,6 +219,79 @@ def run_gold(df: pd.DataFrame) -> dict:
     }
 
 
+# ── Analyst summary ────────────────────────────────────────────────────────────
+def build_analyst_summary(silver_df: pd.DataFrame, gold: dict, silver: dict) -> dict:
+    avg     = silver["avg_change_24h"]
+    bull    = gold["bullish_coins"]
+    bear    = gold["bearish_coins"]
+    total   = gold["total_coins"]
+    gainers = gold["top_gainers"]
+    losers  = gold["top_losers"]
+    anomaly_rate = silver["anomaly_rate_pct"]
+    vol_spikes   = silver["volume_spikes"]
+
+    # ── Market mood ────────────────────────────────────────────
+    if avg >= 3:
+        mood = "strongly bullish 🚀"
+        mood_detail = (f"The market is surging — {bull}/{total} coins are green with an average "
+                       f"+{avg:.1f}% gain over the past 24h. Risk appetite is high.")
+    elif avg >= 0.5:
+        mood = "mildly bullish 📈"
+        mood_detail = (f"Markets are leaning positive — {bull}/{total} coins are up with a modest "
+                       f"+{avg:.1f}% average. Steady accumulation conditions.")
+    elif avg >= -0.5:
+        mood = "neutral / sideways ↔"
+        mood_detail = (f"Mixed signals — {bull} up vs {bear} down, average change near flat "
+                       f"({avg:+.1f}%). Market is consolidating; wait for a clear direction.")
+    elif avg >= -3:
+        mood = "mildly bearish 📉"
+        mood_detail = (f"Mild sell pressure — {bear}/{total} coins are red with {avg:.1f}% average. "
+                       f"Consider reducing exposure or waiting for stabilisation.")
+    else:
+        mood = "strongly bearish 🔴"
+        mood_detail = (f"Market is under heavy pressure — {bear}/{total} coins falling, avg {avg:.1f}%. "
+                       f"High caution advised; cash or stablecoins may be safer short-term.")
+
+    # ── Invest picks (large/mid cap gainers with real momentum) ────────────────
+    large_mid = silver_df[silver_df["category"].isin(["Large Cap","Mid Cap"])].copy()
+    invest_picks = (large_mid[large_mid["price_change_24h"] > 0]
+                    .nlargest(3, "price_change_24h")[["symbol","name","price_change_24h","category"]]
+                    .to_dict(orient="records"))
+
+    # ── Trade alerts (anomalies + volume spikes — short-term plays) ────────────
+    trade_alerts = (silver_df[silver_df["is_anomaly"] | silver_df["volume_spike"]]
+                    .nlargest(3, "price_change_24h")[["symbol","name","price_change_24h","volume_24h","is_anomaly","volume_spike"]]
+                    .to_dict(orient="records"))
+
+    # ── Caution list (already-invested holders) ────────────────────────────────
+    caution = []
+    for c in losers[:3]:
+        sym  = c["symbol"]
+        chg  = c["price_change_24h"]
+        note = ("Significant drop — consider stop-loss or partial exit." if chg < -8 else
+                "Moderate decline — monitor closely before adding more.")
+        caution.append({"symbol": sym, "name": c["name"],
+                        "price_change_24h": chg, "note": note})
+
+    # ── Volatility warning ─────────────────────────────────────
+    if anomaly_rate > 15 or vol_spikes >= 3:
+        vol_warning = (f"⚠ High volatility detected — {anomaly_rate:.1f}% of coins flagged as "
+                       f"anomalies, {vol_spikes} volume spikes. Reduce position sizes and use "
+                       f"tight stop-losses.")
+    else:
+        vol_warning = (f"Volatility is within normal range — {anomaly_rate:.1f}% anomaly rate, "
+                       f"{vol_spikes} volume spike(s). Standard risk management applies.")
+
+    return {
+        "mood":         mood,
+        "mood_detail":  mood_detail,
+        "invest_picks": invest_picks,
+        "trade_alerts": trade_alerts,
+        "caution":      caution,
+        "vol_warning":  vol_warning,
+    }
+
+
 # ── API routes ─────────────────────────────────────────────────────────────────
 @app.get("/health")
 def health():
@@ -234,9 +307,11 @@ def run_pipeline():
     gold           = run_gold(silver_df)
     elapsed        = round((datetime.now(timezone.utc) - t0).total_seconds() * 1000, 1)
 
+    analyst = build_analyst_summary(silver_df, gold, silver)
     result = {
         "run_at": t0.isoformat(), "elapsed_ms": elapsed, "source": source,
         "pipeline": {"bronze": bronze, "silver": silver, "gold": gold},
+        "analyst": analyst,
     }
     global _last_run
     _last_run = result
@@ -253,6 +328,7 @@ def dashboard():
     data   = run_pipeline()
     p      = data["pipeline"]
     b, s, g = p["bronze"], p["silver"], p["gold"]
+    an     = data["analyst"]
     source = data.get("source", "")
 
     tier_rows = ""
@@ -351,6 +427,25 @@ def dashboard():
     .btn-dim{{background:transparent;color:var(--muted);border:1px solid var(--border)}}.btn-dim:hover{{color:var(--text);border-color:var(--muted)}}
     .cd-bar{{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:.5rem 1rem;font-size:.75rem;font-family:'JetBrains Mono',monospace;color:var(--muted);display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem}}
     #cd{{color:var(--cyan)}}
+    /* analyst panel */
+    .analyst{{background:linear-gradient(135deg,rgba(0,255,136,.04),rgba(0,212,255,.04));border:1px solid rgba(0,255,136,.2);border-radius:12px;padding:1.4rem 1.6rem;margin-top:2rem}}
+    .analyst-header{{display:flex;align-items:center;gap:.8rem;margin-bottom:1.2rem;flex-wrap:wrap}}
+    .analyst-badge{{background:rgba(0,255,136,.12);border:1px solid rgba(0,255,136,.35);border-radius:20px;padding:.25rem .9rem;font-size:.68rem;font-family:'JetBrains Mono',monospace;color:var(--green);letter-spacing:1px}}
+    .analyst-mood{{font-size:1rem;font-weight:700;color:var(--text)}}
+    .mood-detail{{font-size:.83rem;color:var(--muted);line-height:1.6;margin-bottom:1.2rem;padding:.7rem 1rem;background:rgba(255,255,255,.03);border-left:3px solid var(--green);border-radius:0 6px 6px 0}}
+    .an-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}}
+    .an-card{{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem}}
+    .an-card-title{{font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:.8rem}}
+    .an-card.invest .an-card-title{{color:var(--green)}}
+    .an-card.trade  .an-card-title{{color:var(--yellow)}}
+    .an-card.caution .an-card-title{{color:var(--red)}}
+    .an-row{{display:flex;justify-content:space-between;align-items:flex-start;padding:.45rem 0;border-bottom:1px solid rgba(26,48,80,.5);gap:.5rem}}
+    .an-row:last-child{{border-bottom:none}}
+    .an-sym{{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.82rem;min-width:52px}}
+    .an-name{{font-size:.78rem;color:var(--muted);flex:1}}
+    .an-note{{font-size:.72rem;color:var(--muted);margin-top:.15rem;line-height:1.4}}
+    .vol-warn{{margin-top:1rem;padding:.6rem 1rem;background:rgba(255,214,10,.06);border:1px solid rgba(255,214,10,.2);border-radius:8px;font-size:.78rem;color:var(--yellow);font-family:'JetBrains Mono',monospace;line-height:1.5}}
+    .disclaimer{{margin-top:.8rem;font-size:.68rem;color:var(--muted);font-style:italic}}
   </style>
 </head>
 <body>
@@ -421,6 +516,52 @@ def dashboard():
         <tbody>{loser_rows}</tbody>
       </table>
     </div>
+  </div>
+
+  <!-- ── Analyst Summary ─────────────────────────────────── -->
+  <div class="analyst">
+    <div class="analyst-header">
+      <span class="analyst-badge">▶ PIPELINE ANALYST</span>
+      <span class="analyst-mood">Market is {an['mood']}</span>
+    </div>
+    <div class="mood-detail">{an['mood_detail']}</div>
+
+    <div class="an-grid">
+
+      <!-- Invest -->
+      <div class="an-card invest">
+        <div class="an-card-title">💰 Consider Investing (New Money)</div>
+        {"".join(f'''<div class="an-row">
+          <div><div class="an-sym" style="color:var(--green)">{c['symbol']}</div><div class="an-name">{c['name']}</div></div>
+          <div style="color:var(--green);font-weight:700;font-family:'JetBrains Mono',monospace">+{c['price_change_24h']:.2f}%</div>
+        </div>''' for c in an['invest_picks']) if an['invest_picks'] else '<div class="an-name" style="padding:.4rem 0">No strong buy signals right now — market lacks clear momentum.</div>'}
+      </div>
+
+      <!-- Trade -->
+      <div class="an-card trade">
+        <div class="an-card-title">⚡ Active Trades (Already Holding)</div>
+        {"".join(f'''<div class="an-row">
+          <div><div class="an-sym" style="color:var(--yellow)">{c['symbol']}</div>
+          <div class="an-name">{c['name']}</div>
+          <div class="an-note">{"🔊 Volume spike — watch for breakout" if c['volume_spike'] else ""}{"📊 Price anomaly — momentum move" if c['is_anomaly'] and not c['volume_spike'] else ""}</div></div>
+          <div style="color:{'var(--green)' if c['price_change_24h']>=0 else 'var(--red)'};font-weight:700;font-family:'JetBrains Mono',monospace">{c['price_change_24h']:+.2f}%</div>
+        </div>''' for c in an['trade_alerts']) if an['trade_alerts'] else '<div class="an-name" style="padding:.4rem 0">No significant anomalies or volume spikes detected.</div>'}
+      </div>
+
+      <!-- Caution -->
+      <div class="an-card caution">
+        <div class="an-card-title">⚠ Caution — Review Positions</div>
+        {"".join(f'''<div class="an-row">
+          <div><div class="an-sym" style="color:var(--red)">{c['symbol']}</div>
+          <div class="an-name">{c['name']}</div>
+          <div class="an-note">{c['note']}</div></div>
+          <div style="color:var(--red);font-weight:700;font-family:'JetBrains Mono',monospace">{c['price_change_24h']:.2f}%</div>
+        </div>''' for c in an['caution'])}
+      </div>
+
+    </div>
+    <div class="vol-warn">{an['vol_warning']}</div>
+    <div class="disclaimer">⚠ This summary is generated by the data pipeline using statistical signals only. It is not financial advice. Always do your own research before investing.</div>
   </div>
 
   <div class="btns">
