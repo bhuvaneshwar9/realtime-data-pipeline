@@ -24,7 +24,7 @@ app = FastAPI(
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 COINGECKO = "https://api.coingecko.com/api/v3/coins/markets"
-HDR       = {"User-Agent": "Mozilla/5.0 (DataPipelineBot/2.0; +github.com/bhuvaneshwar9)"}
+HDR       = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"}
 CACHE_TTL = 300
 
 _cache    = {"df": None, "fetched_at": None, "source": ""}
@@ -82,26 +82,72 @@ def fetch_coins() -> tuple[pd.DataFrame, str]:
 def _fallback() -> pd.DataFrame:
     rng = np.random.default_rng(42)
     now = datetime.now(timezone.utc)
-    n   = 100
-    names = ["Bitcoin","Ethereum","Solana","Cardano","Avalanche","Polkadot",
-             "Chainlink","Uniswap","Litecoin","Ripple"]
-    tiers = rng.choice(["Large Cap","Mid Cap","Small Cap","Micro Cap"], n,
-                       p=[0.1,0.15,0.35,0.4]).tolist()
-    return pd.DataFrame({
-        "id":              [f"coin_{i}" for i in range(n)],
-        "symbol":          [names[i % len(names)][:3].upper() for i in range(n)],
-        "name":            [names[i % len(names)] for i in range(n)],
-        "category":        tiers,
-        "price_usd":       rng.uniform(0.001, 65000, n).round(4).tolist(),
-        "market_cap":      rng.uniform(1e6, 1.3e12, n).tolist(),
-        "volume_24h":      rng.uniform(1e5, 3e10, n).tolist(),
-        "price_change_24h": rng.normal(0, 6, n).round(2).tolist(),
-        "price_change_7d": rng.normal(0, 12, n).round(2).tolist(),
-        "high_24h":        rng.uniform(0.001, 70000, n).round(4).tolist(),
-        "low_24h":         rng.uniform(0.001, 60000, n).round(4).tolist(),
-        "event_type":      rng.choice(["bullish","bearish"], n).tolist(),
-        "timestamp":       [now]*n,
-    })
+
+    # Realistic coin data: (id, symbol, name, approx_price, market_cap, tier)
+    coins = [
+        ("bitcoin",       "BTC",  "Bitcoin",          94000, 1.85e12, "Large Cap"),
+        ("ethereum",      "ETH",  "Ethereum",          3200, 3.85e11, "Large Cap"),
+        ("tether",        "USDT", "Tether",               1, 1.44e11, "Large Cap"),
+        ("binancecoin",   "BNB",  "BNB",                620, 8.90e10, "Large Cap"),
+        ("solana",        "SOL",  "Solana",             175, 8.30e10, "Large Cap"),
+        ("ripple",        "XRP",  "XRP",               0.52, 2.96e10, "Large Cap"),
+        ("usd-coin",      "USDC", "USD Coin",             1, 4.40e10, "Large Cap"),
+        ("steth",         "STETH","Lido Staked ETH",   3190, 3.60e10, "Large Cap"),
+        ("dogecoin",      "DOGE", "Dogecoin",          0.17, 2.50e10, "Large Cap"),
+        ("tron",          "TRX",  "TRON",             0.135, 1.17e10, "Large Cap"),
+        ("cardano",       "ADA",  "Cardano",           0.45, 1.59e10, "Large Cap"),
+        ("avalanche-2",   "AVAX", "Avalanche",          38,  1.57e10, "Large Cap"),
+        ("chainlink",     "LINK", "Chainlink",          17,  1.05e10, "Large Cap"),
+        ("polkadot",      "DOT",  "Polkadot",           8.5, 1.26e10, "Large Cap"),
+        ("uniswap",       "UNI",  "Uniswap",             12, 7.20e9,  "Mid Cap"),
+        ("litecoin",      "LTC",  "Litecoin",           90,  6.60e9,  "Mid Cap"),
+        ("near",          "NEAR", "NEAR Protocol",     7.2,  7.70e9,  "Mid Cap"),
+        ("polygon",       "MATIC","Polygon",           0.85, 7.90e9,  "Mid Cap"),
+        ("internet-computer","ICP","Internet Computer",13.5, 6.30e9,  "Mid Cap"),
+        ("stellar",       "XLM",  "Stellar",          0.125, 3.60e9,  "Mid Cap"),
+        ("cosmos",        "ATOM", "Cosmos",              9,  3.50e9,  "Mid Cap"),
+        ("monero",        "XMR",  "Monero",            165,  3.04e9,  "Mid Cap"),
+        ("ethereum-classic","ETC","Ethereum Classic",   27,  3.93e9,  "Mid Cap"),
+        ("filecoin",      "FIL",  "Filecoin",            6,  3.50e9,  "Mid Cap"),
+        ("hedera",        "HBAR", "Hedera",            0.09, 3.40e9,  "Mid Cap"),
+        ("vechain",       "VET",  "VeChain",           0.04, 3.30e9,  "Small Cap"),
+        ("algorand",      "ALGO", "Algorand",          0.19, 1.56e9,  "Small Cap"),
+        ("the-sandbox",   "SAND", "The Sandbox",       0.45, 1.04e9,  "Small Cap"),
+        ("decentraland",  "MANA", "Decentraland",      0.48, 9.00e8,  "Small Cap"),
+        ("chiliz",        "CHZ",  "Chiliz",            0.095,8.70e8,  "Small Cap"),
+        ("enjincoin",     "ENJ",  "Enjin Coin",        0.28, 4.70e8,  "Small Cap"),
+        ("1inch",         "1INCH","1inch",              0.4,  4.30e8,  "Small Cap"),
+        ("basic-attention-token","BAT","Basic Attention",0.22,3.30e8, "Small Cap"),
+        ("zcash",         "ZEC",  "Zcash",               33,  5.40e8,  "Small Cap"),
+        ("dash",          "DASH", "Dash",                33,  3.90e8,  "Small Cap"),
+        ("horizen",       "ZEN",  "Horizen",           11.5, 1.40e8,  "Micro Cap"),
+        ("syscoin",       "SYS",  "Syscoin",           0.11, 9.00e7,  "Micro Cap"),
+        ("wanchain",      "WAN",  "Wanchain",          0.22, 6.50e7,  "Micro Cap"),
+        ("dent",          "DENT", "Dent",             0.001, 1.30e7,  "Micro Cap"),
+        ("funtoken",      "FUN",  "FunToken",          0.01, 8.50e7,  "Micro Cap"),
+    ]
+
+    rows = []
+    for i, (cid, sym, name, price, mc, tier) in enumerate(coins):
+        pc24 = float(rng.normal(0, 5))
+        pc7d = float(rng.normal(0, 10))
+        vol  = mc * rng.uniform(0.03, 0.25)
+        rows.append({
+            "id":               cid,
+            "symbol":           sym,
+            "name":             name,
+            "category":         tier,
+            "price_usd":        round(price * (1 + rng.uniform(-0.03, 0.03)), 4 if price < 1 else 2),
+            "market_cap":       mc,
+            "volume_24h":       round(vol, 0),
+            "price_change_24h": round(pc24, 2),
+            "price_change_7d":  round(pc7d, 2),
+            "high_24h":         round(price * 1.04, 4 if price < 1 else 2),
+            "low_24h":          round(price * 0.96, 4 if price < 1 else 2),
+            "event_type":       "bullish" if pc24 >= 0 else "bearish",
+            "timestamp":        now,
+        })
+    return pd.DataFrame(rows)
 
 
 # ── Medallion pipeline layers ──────────────────────────────────────────────────
